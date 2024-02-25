@@ -1,10 +1,10 @@
 # SecretPixel - Advanced Image Steganography Tool
 
-SecretPixel is a cutting-edge steganography tool designed to securely conceal sensitive information within images. It stands out in the realm of digital steganography by combining advanced encryption, compression, and a seeded Least Significant Bit (LSB) technique to provide a robust solution for embedding data undetectably.
+SecretPixel is a cutting-edge steganography tool designed to securely conceal sensitive information within images. It stands out in the realm of digital steganography by combining advanced encryption and a seeded Least Significant Bit (LSB) technique to provide a robust solution for embedding data undetectably.
 
 ## Key Features
 
-- **Advanced Encryption**: SecretPixel uses AES-256 encryption for the data, with a session key that is further encrypted using RSA public key cryptography. This two-tier encryption ensures that only the holder of the corresponding RSA private key can decrypt the hidden information, providing a high level of security.
+- **Advanced Encryption (Removed in this fork)**: ~~SecretPixel uses AES-256 encryption for the data, with a session key that is further encrypted using RSA public key cryptography. This two-tier encryption ensures that only the holder of the corresponding RSA private key can decrypt the hidden information, providing a high level of security.~~
 
 - **Compression**: Before encryption, the data is compressed using zlib to reduce its size. This not only makes the process more efficient but also helps in minimizing patterns that could be detected by steganalysis tools.
 
@@ -12,11 +12,15 @@ SecretPixel is a cutting-edge steganography tool designed to securely conceal se
 
 - **File Name Storage**: SecretPixel stores the original filename of the hidden data within the image. This allows for the file to be extracted with its original name, providing additional convenience and maintaining file identity.
 
+- **Operation Time Calculation (Fork Version)**: Forked SecretPixel calculates the time required for the machine to hide and extract data.
+
 - **Cross-Platform Compatibility**: Written in Python, SecretPixel is cross-platform and can be used on any system with Python installed.
 
 ## Installation
 
-To use SecretPixel, clone the repository or download the source code from GitHub. Ensure you have Python 3 installed on your system, along with the required packages:
+To use SecretPixel, clone the repository or download the source code from GitHub. Ensure you have Python 3 installed on your system, along with the required packages.
+
+Original:
 
 ```
 git clone https://github.com/x011/SecretPixel.git
@@ -24,25 +28,32 @@ cd SecretPixel
 pip install -r requirements.txt
 ```
 
+Encryption Removed:
+```
+git clone https://github.com/GALA-X-Y/SecretPixel.git
+cd SecretPixel
+pip install -r requirements.txt
+```
 
-## Generating RSA Keys
+## Generating RSA Keys (Not required in this fork)
 
-SecretPixel uses RSA public key cryptography to secure the embedded data. To get started, you will need to generate a pair of RSA keys: a private key and a public key. We provide an auxiliary Python script to facilitate this process.
+~~SecretPixel uses RSA public key cryptography to secure the embedded data. To get started, you will need to generate a pair of RSA keys: a private key and a public key. We provide an auxiliary Python script to facilitate this process.~~
 
-### Key Generation Script
+### ~~Key Generation Script~~
 
-The `generate_keys.py` script creates a 4096-bit RSA key pair. To generate your keys, follow these steps:
+~~The `generate_keys.py` script creates a 4096-bit RSA key pair. To generate your keys, follow these steps:~~
 
-1. Run the script using Python:
+1. ~~Run the script using Python:~~
 
-   `python generate_keys.py`
+   ~~`python generate_keys.py`~~
 
-2. When prompted, enter a passphrase for the RSA private key. This passphrase adds a layer of security by encrypting your private key with AES-256, ensuring that even if the key is compromised, it cannot be used without the passphrase. Choose a strong, complex passphrase for maximum protection.
+2. ~~When prompted, enter a passphrase for the RSA private key. This passphrase adds a layer of security by encrypting your private key with AES-256, ensuring that even if the key is compromised, it cannot be used without the passphrase. Choose a strong, complex passphrase for maximum protection.~~
 
-3. Upon successful completion, the script will create two files in the current directory:
-   - `myprivatekey.pem`: Your RSA private key, encrypted with the passphrase you provided.
-   - `mypublickey.pem`: Your RSA public key, which can be safely shared with others.
+3. ~~Upon successful completion, the script will create two files in the current directory:~~
+   - ~~`myprivatekey.pem`: Your RSA private key, encrypted with the passphrase you provided.~~
+   - ~~`mypublickey.pem`: Your RSA public key, which can be safely shared with others.~~
 
+This extracts the hidden file from `carrier.png` using the private key `myprivatekey.pem`. If `extracted.txt` is not provided, the file will be extracted with its original filename.
 
 ## Usage
 
@@ -50,34 +61,21 @@ The `generate_keys.py` script creates a 4096-bit RSA key pair. To generate your 
 
 To hide a file within an image, use the following command:
 
-`python secret_pixel.py hide host.png secret.txt mypublickey.pem output.png`
+`python secret_pixel.py hide host.png secret.txt output.png`
 
-This command embeds `secret.txt` inside `host.png` using the public key `mypublickey.pem`, and saves the steganographed image as `output.png`.
+This command embeds `secret.txt` inside `host.png`, and saves the steganographed image as `output.png`.
 
 ### Extracting a File
 
 To extract a hidden file from an image, use the following command:
 
-`python secret_pixel.py extract carrier.png myprivatekey.pem [extracted.txt]`
+`python secret_pixel.py extract carrier.png [extracted.txt]`
 
-This extracts the hidden file from `carrier.png` using the private key `myprivatekey.pem`. If `extracted.txt` is not provided, the file will be extracted with its original filename.
-
+This extracts the hidden file from `carrier.png`. If `extracted.txt` is not provided, the file will be extracted with its original filename.
 
 ## Security and Stealth
 
-SecretPixel is designed with security and stealth in mind. The encryption process ensures that the hidden data remains confidential, while the compression and random distribution of data make it extremely difficult for steganalysis tools to detect the presence of embedded information. The use of a seeded random number generator adds an additional layer of security, as the pattern of embedded data cannot be predicted without knowing the seed.
-
-
-## Encryption:
-
-- **AES Encryption**: SecretPixel uses AES (Advanced Encryption Standard) with a 256-bit key for symmetric encryption. The key is derived from a randomly generated 256-bit session key using PBKDF2 (Password-Based Key Derivation Function 2) with HMAC-SHA-256 as the hash function. The number of iterations for the key derivation is set to 200,000, which increases the cost of brute-force attacks.
-
-- **RSA Encryption**: The session key is encrypted using RSA public key cryptography with OAEP (Optimal Asymmetric Encryption Padding) and SHA-256 for both the MGF1 (Mask Generation Function) and the hashing algorithm. A 4096-bit RSA key size is recommended to ensure a high level of security (default on generate_keys.py).
-
-- **Initialization Vector (IV)**: A 128-bit IV is used for AES in CBC (Cipher Block Chaining) mode. The IV ensures that identical plaintext blocks will produce different ciphertext blocks, enhancing security.
-
-- **Padding**: PKCS7 padding is used to ensure that the plaintext data is a multiple of the AES block size (128 bits). This padding is removed after decryption.
-
+SecretPixel is designed with security and stealth in mind. The compression and random distribution of data make it extremely difficult for steganalysis tools to detect the presence of embedded information. The use of a seeded random number generator adds an additional layer of security, as the pattern of embedded data cannot be predicted without knowing the seed.
 
 ## Supported File Types
 
@@ -127,5 +125,6 @@ SecretPixel is a unique and highly secure steganography tool that offers advance
 This program is released under the GNU General Public License v3.0.
 
 Project Developed by Pedro Lobito. 
+Project Modified by Hugo Law.
 
 For more details, see the [LICENSE](https://github.com/x011/SecretPixel?tab=GPL-3.0-1-ov-file) file or visit [GNU General Public License v3.0](https://www.gnu.org/licenses/gpl-3.0.en.html).
