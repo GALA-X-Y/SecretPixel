@@ -53,8 +53,6 @@ pip install -r requirements.txt
    - ~~`myprivatekey.pem`: Your RSA private key, encrypted with the passphrase you provided.~~
    - ~~`mypublickey.pem`: Your RSA public key, which can be safely shared with others.~~
 
-This extracts the hidden file from `carrier.png` using the private key `myprivatekey.pem`. If `extracted.txt` is not provided, the file will be extracted with its original filename.
-
 ## Usage
 
 ### Hiding a File
