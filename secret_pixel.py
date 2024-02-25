@@ -4,15 +4,8 @@ import os
 import random
 from PIL import Image
 import numpy as np
-from cryptography.hazmat.primitives.padding import PKCS7
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import padding
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.backends import default_backend
 import zlib
-from getpass import getpass
+import time
 
 """
 This program is free software: you can redistribute it and/or modify
@@ -29,83 +22,12 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-def encrypt_data(data, public_key):
-    # Generate a random session key
-    session_key = os.urandom(32)  # 32 bytes for 256-bit key
-    
-    # Derive a symmetric key from the session key
-    salt = os.urandom(16)  # 16 bytes for 128-bit salt
-    kdf = PBKDF2HMAC(
-        algorithm=hashes.SHA256(),
-        length=32,
-        salt=salt,
-        iterations=200000,  # Increased iterations for added security
-        backend=default_backend()
-    )
-    key = kdf.derive(session_key)
-    
-    # Encrypt the data with AES
-    iv = os.urandom(16)  # 16 bytes for 128-bit IV
-    cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
-    encryptor = cipher.encryptor()
-    padder = PKCS7(algorithms.AES.block_size).padder()
-    padded_data = padder.update(data) + padder.finalize()
-    encrypted_data = encryptor.update(padded_data) + encryptor.finalize()
-    
-    # Encrypt the session key with RSA
-    encrypted_session_key = public_key.encrypt(
-        session_key,
-        padding.OAEP(
-            mgf=padding.MGF1(algorithm=hashes.SHA256()),
-            algorithm=hashes.SHA256(),
-            label=None
-        )
-    )
-    
-    return encrypted_session_key, salt, iv, encrypted_data
-
-def decrypt_data(encrypted_session_key, salt, iv, encrypted_data, private_key):
-    # Decrypt the session key with RSA
-    session_key = private_key.decrypt(
-        encrypted_session_key,
-        padding.OAEP(
-            mgf=padding.MGF1(algorithm=hashes.SHA256()),
-            algorithm=hashes.SHA256(),
-            label=None
-        )
-    )
-    
-    # Derive the symmetric key from the session key
-    kdf = PBKDF2HMAC(
-        algorithm=hashes.SHA256(),
-        length=32,
-        salt=salt,
-        iterations=200000,  # Increased iterations for added security
-        backend=default_backend()
-    )
-    key = kdf.derive(session_key)
-    
-    # Decrypt the data with AES
-    cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
-    decryptor = cipher.decryptor()
-    decrypted_padded_data = decryptor.update(encrypted_data) + decryptor.finalize()
-    unpadder = PKCS7(algorithms.AES.block_size).unpadder()
-    decrypted_data = unpadder.update(decrypted_padded_data) + unpadder.finalize()
-    
-    return decrypted_data
-
 def compute_seed_from_image_dimensions(image_path):
     with Image.open(image_path) as img:
         width, height = img.size
     return width + height
 
-def hide_file_in_png(image_path, file_to_hide, output_image_path, public_key_path):
-    # Load the public key
-    with open(public_key_path, 'rb') as key_file:
-        public_key = serialization.load_pem_public_key(
-            key_file.read(),
-            backend=default_backend()
-        )
+def hide_file_in_png(image_path, file_to_hide, output_image_path):
 
     # Use the sum of the image dimensions as the seed
     seed = compute_seed_from_image_dimensions(image_path)
@@ -154,9 +76,6 @@ def hide_file_in_png(image_path, file_to_hide, output_image_path, public_key_pat
     
     # Compress the file
     compressed_data = zlib.compress(file_bytes)
-
-    # Encrypt the compressed data
-    encrypted_session_key, salt, iv, encrypted_data = encrypt_data(compressed_data, public_key)
     
     # Get the filename to store
     filename = os.path.basename(file_to_hide).encode()
@@ -164,7 +83,7 @@ def hide_file_in_png(image_path, file_to_hide, output_image_path, public_key_pat
 
     # Concatenate the encrypted session key, salt, iv, and encrypted data
     data_to_encode = (filename_size.to_bytes(4, 'big') + filename +
-                      encrypted_session_key + salt + iv + encrypted_data)
+                      compressed_data)
     
     # Calculate the number of pixels needed
     file_size = len(data_to_encode)
@@ -217,21 +136,7 @@ def hide_file_in_png(image_path, file_to_hide, output_image_path, public_key_pat
     print(f"File '{file_to_hide}' has been successfully hidden in '{output_image_path}'.")
 
 
-
-
-
-def extract_file_from_png(image_path, output_file_path, private_key_path):
-    # Load the private key
-    passphrase = getpass("Enter the private key passphrase: ")
-    with open(private_key_path, 'rb') as key_file:
-        private_key = serialization.load_pem_private_key(
-            key_file.read(),
-            password=passphrase.encode(),
-            backend=default_backend()
-        )
-    
-    # Determine the size of the encrypted session key based on the private key size
-    encrypted_session_key_size = private_key.key_size // 8
+def extract_file_from_png(image_path, output_file_path):
     
     # Use the sum of the image dimensions as the seed
     seed = compute_seed_from_image_dimensions(image_path)
@@ -298,16 +203,10 @@ def extract_file_from_png(image_path, output_file_path, private_key_path):
     
     # Extract the session key, salt, iv, and encrypted data
     offset = 4 + filename_size
-    encrypted_session_key = data_to_decode[offset:offset + encrypted_session_key_size]
-    salt = data_to_decode[offset + encrypted_session_key_size:offset + encrypted_session_key_size + 16]
-    iv = data_to_decode[offset + encrypted_session_key_size + 16:offset + encrypted_session_key_size + 32]
-    encrypted_data = data_to_decode[offset + encrypted_session_key_size + 32:]
-    
-    # Decrypt the data
-    decrypted_data = decrypt_data(encrypted_session_key, salt, iv, encrypted_data, private_key)
+    compressed_data = data_to_decode[offset:]
     
     # Decompress the decrypted data
-    decompressed_data = zlib.decompress(decrypted_data)
+    decompressed_data = zlib.decompress(compressed_data)
     
     # If no output file path is provided, use the extracted filename
     if not output_file_path:
@@ -329,24 +228,22 @@ def extract_file_from_png(image_path, output_file_path, private_key_path):
 
 def main():
     parser = argparse.ArgumentParser(description='SecretPixel - Advanced Steganography Tool', epilog="Example commands:\n"
-                                            "  Hide: python secret_pixel.py hide host.png secret.txt mypublickey.pem output.png\n"
-                                            "  Extract: python secret_pixel.py extract carrier.png myprivatekey.pem [extracted.txt]",
+                                            "  Hide: python secret_pixel.py hide host.png secret.txt output.png\n"
+                                            "  Extract: python secret_pixel.py extract carrier.png [extracted.txt]",
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     subparsers = parser.add_subparsers(dest='command')
 
     # Subparser for hiding a file
-    hide_parser = subparsers.add_parser('hide', help='Hide a file inside an image', epilog="Example: python secret_pixel.py hide host.png secret.txt mypublickey.pem output.png", formatter_class=argparse.RawDescriptionHelpFormatter)
+    hide_parser = subparsers.add_parser('hide', help='Hide a file inside an image', epilog="Example: python secret_pixel.py hide host.png secret.txt output.png", formatter_class=argparse.RawDescriptionHelpFormatter)
     hide_parser.add_argument('host', type=str, help='Path to the host image')
     hide_parser.add_argument('secret', type=str, help='Path to the secret file to hide')
-    hide_parser.add_argument('pubkey', type=str, help='Path to the public key for encryption')
     hide_parser.add_argument('output', type=str, help='Path to the output image with embedded data')
 
 
     # Subparser for extracting a file
-    extract_parser = subparsers.add_parser('extract', help='Extract a file from an image', epilog="Example: python secret_pixel.py extract carrier.png  myprivatekey.pem [extracted.txt]",
+    extract_parser = subparsers.add_parser('extract', help='Extract a file from an image', epilog="Example: python secret_pixel.py extract carrier.png [extracted.txt]",
                                            formatter_class=argparse.RawDescriptionHelpFormatter)
     extract_parser.add_argument('carrier', type=str, help='Path to the image with embedded data')
-    extract_parser.add_argument('privkey', type=str, help='Path to the private key for decryption')
 
     extract_parser.add_argument('extracted', nargs='?', type=str, default=None, help='Path to save the extracted secret file (optional, defaults to the original filename)')
 
@@ -359,13 +256,15 @@ def main():
     args = parser.parse_args()
 
     if args.command == 'hide':
-        hide_file_in_png(args.host, args.secret, args.output, args.pubkey)
+        hide_file_in_png(args.host, args.secret, args.output)
     elif args.command == 'extract':
         # If no output file path is provided, use None to trigger default behavior
         output_file_path = args.extracted if args.extracted else None
-        extract_file_from_png(args.carrier, output_file_path, args.privkey)
+        extract_file_from_png(args.carrier, output_file_path)
     else:
         parser.print_help()
 
-if __name__ == '__main__':
-    main()
+if __name__ == '__main__': 
+  start_time = time.time()
+  main()
+  print(f'\nExecution Time : {time.time()-start_time}')
