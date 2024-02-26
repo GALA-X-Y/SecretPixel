@@ -4,7 +4,7 @@ SecretPixel is a cutting-edge steganography tool designed to securely conceal se
 
 ## Key Features
 
-- **Advanced Encryption (Removed in this fork)**: ~~SecretPixel uses AES-256 encryption for the data, with a session key that is further encrypted using RSA public key cryptography. This two-tier encryption ensures that only the holder of the corresponding RSA private key can decrypt the hidden information, providing a high level of security.~~
+- **Advanced Encryption**: SecretPixel uses AES-256 encryption for the data. This encryption ensures that only the holder of the corresponding session key can decrypt the hidden information, providing a high level of security.
 
 - **Compression**: Before encryption, the data is compressed using zlib to reduce its size. This not only makes the process more efficient but also helps in minimizing patterns that could be detected by steganalysis tools.
 
@@ -73,7 +73,16 @@ This extracts the hidden file from `carrier.png`. If `extracted.txt` is not prov
 
 ## Security and Stealth
 
-SecretPixel is designed with security and stealth in mind. The compression and random distribution of data make it extremely difficult for steganalysis tools to detect the presence of embedded information. The use of a seeded random number generator adds an additional layer of security, as the pattern of embedded data cannot be predicted without knowing the seed.
+SecretPixel is designed with security and stealth in mind. The encryption process ensures that the hidden data remains confidential, while the compression and random distribution of data make it extremely difficult for steganalysis tools to detect the presence of embedded information. The use of a seeded random number generator adds an additional layer of security, as the pattern of embedded data cannot be predicted without knowing the seed.
+
+
+## Encryption:
+
+- **AES Encryption**: SecretPixel uses AES (Advanced Encryption Standard) with a 256-bit key for symmetric encryption. The key is derived from a randomly generated 256-bit session key using PBKDF2 (Password-Based Key Derivation Function 2) with HMAC-SHA-256 as the hash function. The number of iterations for the key derivation is set to 200,000, which increases the cost of brute-force attacks.
+
+- **Initialization Vector (IV)**: A 128-bit IV is used for AES in CBC (Cipher Block Chaining) mode. The IV ensures that identical plaintext blocks will produce different ciphertext blocks, enhancing security.
+
+- **Padding**: PKCS7 padding is used to ensure that the plaintext data is a multiple of the AES block size (128 bits). This padding is removed after decryption.
 
 ## Supported File Types
 
