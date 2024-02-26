@@ -6,6 +6,8 @@ from PIL import Image
 import numpy as np
 import zlib
 import time
+from aes import AES_BASE
+from getpass import getpass
 
 """
 This program is free software: you can redistribute it and/or modify
@@ -77,13 +79,15 @@ def hide_file_in_png(image_path, file_to_hide, output_image_path):
     # Compress the file
     compressed_data = zlib.compress(file_bytes)
     
+    encrypted_data = AES_BASE().encrypt_with_aes(compressed_data, getpass('Enter a passphase for encryption: '))
+
     # Get the filename to store
     filename = os.path.basename(file_to_hide).encode()
     filename_size = len(filename)
 
     # Concatenate the encrypted session key, salt, iv, and encrypted data
     data_to_encode = (filename_size.to_bytes(4, 'big') + filename +
-                      compressed_data)
+                      encrypted_data)
     
     # Calculate the number of pixels needed
     file_size = len(data_to_encode)
@@ -203,8 +207,10 @@ def extract_file_from_png(image_path, output_file_path):
     
     # Extract the session key, salt, iv, and encrypted data
     offset = 4 + filename_size
-    compressed_data = data_to_decode[offset:]
+    encrypted_data = data_to_decode[offset:]
     
+    compressed_data = AES_BASE().decrypt_with_aes(encrypted_data, getpass('Enter the passphase of encryption: '))
+
     # Decompress the decrypted data
     decompressed_data = zlib.decompress(compressed_data)
     
@@ -228,20 +234,20 @@ def extract_file_from_png(image_path, output_file_path):
 
 def main():
     parser = argparse.ArgumentParser(description='SecretPixel - Advanced Steganography Tool', epilog="Example commands:\n"
-                                            "  Hide: python secret_pixel.py hide host.png secret.txt output.png\n"
-                                            "  Extract: python secret_pixel.py extract carrier.png [extracted.txt]",
+                                            "  Hide: python secret_pixel.py hide host.png secret.txt mypublickey.pem output.png\n"
+                                            "  Extract: python secret_pixel.py extract carrier.png myprivatekey.pem [extracted.txt]",
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     subparsers = parser.add_subparsers(dest='command')
 
     # Subparser for hiding a file
-    hide_parser = subparsers.add_parser('hide', help='Hide a file inside an image', epilog="Example: python secret_pixel.py hide host.png secret.txt output.png", formatter_class=argparse.RawDescriptionHelpFormatter)
+    hide_parser = subparsers.add_parser('hide', help='Hide a file inside an image', epilog="Example: python secret_pixel.py hide host.png secret.txt mypublickey.pem output.png", formatter_class=argparse.RawDescriptionHelpFormatter)
     hide_parser.add_argument('host', type=str, help='Path to the host image')
     hide_parser.add_argument('secret', type=str, help='Path to the secret file to hide')
     hide_parser.add_argument('output', type=str, help='Path to the output image with embedded data')
 
 
     # Subparser for extracting a file
-    extract_parser = subparsers.add_parser('extract', help='Extract a file from an image', epilog="Example: python secret_pixel.py extract carrier.png [extracted.txt]",
+    extract_parser = subparsers.add_parser('extract', help='Extract a file from an image', epilog="Example: python secret_pixel.py extract carrier.png  myprivatekey.pem [extracted.txt]",
                                            formatter_class=argparse.RawDescriptionHelpFormatter)
     extract_parser.add_argument('carrier', type=str, help='Path to the image with embedded data')
 
