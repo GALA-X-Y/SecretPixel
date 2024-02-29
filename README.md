@@ -28,7 +28,7 @@ cd SecretPixel
 pip install -r requirements.txt
 ```
 
-Encryption Removed:
+Fork:
 ```
 git clone https://github.com/GALA-X-Y/SecretPixel.git
 cd SecretPixel
